@@ -1,0 +1,90 @@
+#!/usr/bin/env python3                                        # Shebang for Unix-like environments
+"""                                                             # Start of module docstring
+Simulate hash-table collisions using 4-digit folding on 12-digit IC numbers.
+"""                                                             # End of module docstring
+
+import random                                                 # Import random module for generating random digits
+
+# ─── Configuration ──────────────────────────────────────────────────────────────
+TABLES = [                                                    # List of (table size, label) tuples
+    (1009, "Table 1"),                                        #   First table: size 1009, labeled "Table 1"
+    (2003, "Table 2"),                                        #   Second table: size 2003, labeled "Table 2"
+]
+ROUNDS = 10                                                  # Number of simulation rounds per table
+NUM_IC = 1000                                                # Number of IC insertions per round
+
+# ─── IC Generation & Hashing ────────────────────────────────────────────────────
+def generate_ic() -> str:                                     # Define function to generate an IC
+    """Generate a random 12-digit Malaysian IC number."""     # Docstring describing function
+    return "".join(                                           # Return a concatenation of...
+        str(random.randint(0, 9))                            #   a random digit between 0 and 9
+        for _ in range(12)                                    #   repeated 12 times
+    )                                                         # End of join call
+
+def folding_hash(ic: str) -> int:                             # Define function to compute folding hash
+    """                                                       # Start of docstring
+    Compute a folding hash:                                   # Description line 1
+    - Split the 12-digit IC into three 4-digit segments.      # Description line 2
+    - Convert each to int and sum them.                       # Description line 3
+    """                                                       # End of docstring
+    if len(ic) != 12 or not ic.isdigit():                     # Check that input is exactly 12 numeric digits
+        raise ValueError("IC must be exactly 12 numeric digits.")  # Raise error for invalid IC format
+    return sum(                                               # Return the sum of...
+        int(ic[i : i + 4])                                    #   each 4-digit segment converted to integer
+        for i in range(0, 12, 4)                              #   segments start at indices 0, 4, and 8
+    )                                                         # End of sum call
+
+# ─── Hash Table ────────────────────────────────────────────────────────────────
+class HashTable:                                              # Define HashTable class
+    """                                                     # Start of class docstring
+    Hash table with separate chaining.                       # Brief description
+    Records collision count on insert.                       # Additional detail
+    """                                                      # End of class docstring
+
+    def __init__(self, size: int):                           # Constructor takes table size
+        self.size = size                                     # Store the number of buckets
+        self.buckets = [[] for _ in range(size)]             # Initialize each bucket as empty list
+        self.collisions = 0                                  # Initialize collision counter to zero
+
+    def insert(self, ic: str):                               # Define insert method
+        idx = folding_hash(ic) % self.size                   # Compute bucket index via modulo
+        if self.buckets[idx]:                                # If bucket already has entries
+            self.collisions += 1                             #   increment collision count
+        self.buckets[idx].append(ic)                         # Append IC to its bucket
+
+# ─── Simulation & Output ───────────────────────────────────────────────────────
+def simulate(size: int) -> list[int]:                        # Define simulation function
+    """                                                       # Start of docstring
+    Run ROUNDS rounds of NUM_IC insertions into a table.     # Describe simulation
+    Return list of collision counts per round.               # Describe return value
+    """                                                       # End of docstring
+    results: list[int] = []                                  # Initialize list to hold collisions per round
+    for _ in range(ROUNDS):                                  # Loop over each round
+        table = HashTable(size)                              #   create a new hash table
+        for _ in range(NUM_IC):                              #   loop NUM_IC times
+            table.insert(generate_ic())                      #     generate and insert random IC
+        results.append(table.collisions)                     #   record this round’s collision count
+    return results                                           # Return the full list of collision counts
+
+def display_results(results: list[int], label: str):         # Define display function
+    """                                                       # Start of docstring
+    Print a table of rounds vs. collisions and the average.  # Describe display behavior
+    """                                                       # End of docstring
+    print(f"Total collisions for {label} over {ROUNDS} rounds:")  # Header line with label and round count
+    print(f"{'Round':<6} {'Collisions':<10}")                # Column headers, aligned
+    for i, c in enumerate(results, start=1):                  # Enumerate over results
+        print(f"{i:<6} {c:<10}")                             # Print round number and its collision count
+    avg = sum(results) / len(results)                        # Compute average collisions
+    print(f"\nAverage collisions for {label}: {avg:.1f}")    # Print average with one decimal
+    print("-" * 40 + "\n")                                   # Divider line after results
+
+def main():                                                  # Define main entry-point
+    """                                                       # Start of docstring
+    Run simulation and display results for each table.       # Describe main’s purpose
+    """                                                       # End of docstring
+    for size, label in TABLES:                               # Loop over configured tables
+        results = simulate(size)                             #   run simulation
+        display_results(results, label)                      #   display the results
+
+if __name__ == "__main__":                                  # If script is run directly
+    main()                                                   #   call main()
