@@ -1,0 +1,76 @@
+import random                                # for random.randint
+import time                                  # for time.time_ns
+from threading import Thread                 # for spawning concurrent threads
+
+def generate_numbers(n: int = 100) -> list[int]:
+    """
+    Generate a list of n random integers between 0 and 10 000.
+    """
+    return [random.randint(0, 10000) for _ in range(n)]  # list comprehension
+
+def measure_multithread(rounds: int = 10,
+                        n_sets: int = 3,
+                        n_each: int = 100) -> list[int]:
+    """
+    Run generate_numbers in multiple threads and print a tidy table of results.
+    Returns the list of round durations in nanoseconds.
+    """
+    print("=== Multithreading Experiment ===")              # section header
+    header = f"{'Round':<6} {'Duration (ns)':>15}"        # column titles
+    print(header)                                         # print titles
+    print("-" * len(header))                              # underline
+
+    times: list[int] = []                                  # store durations
+    for r in range(1, rounds + 1):                        # for each round
+        start_ns = time.time_ns()                         # timestamp before threads
+        threads: list[Thread] = []                        # collect Thread objects
+        for _ in range(n_sets):                           # spawn n_sets threads
+            t = Thread(target=generate_numbers, args=(n_each,))
+            threads.append(t)                             # keep for join
+            t.start()                                     # start thread
+        for t in threads:                                 # wait for all threads
+            t.join()
+        duration = time.time_ns() - start_ns              # compute elapsed time
+        times.append(duration)                            # record duration
+        print(f"{r:<6} {duration:>15}")                   # print row
+
+    avg = sum(times) // rounds                            # compute average
+    print("-" * len(header))                              # underline
+    print(f"{'Average':<6} {avg:>15} ns\n")               # print average
+    return times
+
+def measure_singlethread(rounds: int = 10,
+                         n_sets: int = 3,
+                         n_each: int = 100) -> list[int]:
+    """
+    Run generate_numbers sequentially and print a tidy table of results.
+    Returns the list of round durations in nanoseconds.
+    """
+    print("=== Single-Threaded Experiment ===")            # section header
+    header = f"{'Round':<6} {'Duration (ns)':>15}"        # column titles
+    print(header)                                         # print titles
+    print("-" * len(header))                              # underline
+
+    times: list[int] = []                                  # store durations
+    for r in range(1, rounds + 1):                        # for each round
+        start_ns = time.time_ns()                         # timestamp before calls
+        for _ in range(n_sets):                           # sequential calls
+            _ = generate_numbers(n_each)
+        duration = time.time_ns() - start_ns              # compute elapsed time
+        times.append(duration)                            # record duration
+        print(f"{r:<6} {duration:>15}")                   # print row
+
+    avg = sum(times) // rounds                            # compute average
+    print("-" * len(header))                              # underline
+    print(f"{'Average':<6} {avg:>15} ns\n")               # print average
+    return times
+
+def main():
+    """
+    Entry point: run both experiments back-to-back.
+    """
+    measure_multithread()                                 # run multithreaded test
+    measure_singlethread()                                # run single-threaded test
+
+if __name__ == "__main__":
+    main()                                                # execute main if script is run
