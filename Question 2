@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+# Shebang line: specifies that this script should be run using the user's Python 3 interpreter
+"""
+graph_app_decor.py
+
+A more creative, decorator-rich command-line interface (CLI) for a social-network graph,
+including fancy banners, box characters, and emoji feedback.
+"""
+
+
+# ─── Graph ADT ────────────────────────────────────────────────────────────────
+class Graph:
+    """Directed graph implementation using adjacency lists for social connections."""
+
+    def __init__(self):
+        self.adj = {}  # Initialize adjacency dictionary: { vertex_name: [neighbor_names] }
+
+    def add_vertex(self, v):
+        """Add a vertex named v if it does not already exist in the graph."""
+        if v not in self.adj:  # Check whether vertex v is not yet a key in adj
+            self.adj[v] = []  # If not, insert v with an empty neighbor list
+
+    def add_edge(self, u, v):
+        """
+        Add a directed edge from user u to user v (u follows v).
+        If u is not already in the graph, it is first added as a vertex.
+        """
+        if u not in self.adj:  # Ensure the source vertex u exists
+            self.adj[u] = []  # Create an empty list for u if absent
+        self.adj[u].append(v)  # Append v to u's adjacency list (one-way follow)
+
+    def outgoing(self, v):
+        """
+        Return a list of users that v is following.
+        If v is not in the graph, returns an empty list instead of raising an error.
+        """
+        return list(self.adj.get(v, []))  # Use dict.get to retrieve neighbors or default to [] then copy
+
+    def followers(self, v):
+        """
+        Return a list of users who are following v.
+        We scan every vertex's neighbor list to see who links to v.
+        Time complexity: O(V + E), where V is number of vertices and E is total edges.
+        """
+        result = []  # Prepare an empty list to collect followers
+        for u, nbrs in self.adj.items():  # Iterate through each (user u, their neighbors)
+            if v in nbrs:  # If v is in u's neighbors list
+                result.append(u)  # Then u follows v, so add to result
+        return result  # Return the complete list of followers
+
+
+# ─── Person Entity ────────────────────────────────────────────────────────────
+class Person:
+    """Represents a social-network user with optional privacy settings."""
+
+    def __init__(self, name, gender, bio, privacy='public'):
+        self.name = name  # Store the display name of the user
+        self.gender = gender  # Store the gender label (e.g., 'M', 'F')
+        self.bio = bio  # Store a short biography string
+        self.privacy = privacy  # Store privacy level: 'public' or 'private'
+
+    def __str__(self):
+        """
+        Return a formatted, box-drawn representation of the user's profile.
+        Public profiles show name, gender, and bio; private profiles show only the name.
+        """
+        # Determine which lines to include based on privacy level
+        if self.privacy == 'public':
+            # Construct each profile line within box characters, left-aligning content
+            lines = [
+                f"│ Name   : {self.name:<20}│",  # Display name padded to width 20
+                f"│ Gender : {self.gender:<20}│",  # Display gender padded to width 20
+                f"│ Bio    : {self.bio:<20}│",  # Display bio padded to width 20
+            ]
+        else:
+            # If private, display only name and a placeholder line
+            lines = [
+                f"│ Name   : {self.name:<20}│",  # Display name in same format
+                "│ (Profile is private)    │",  # Fixed text for private profile
+            ]
+        # Assemble the box: top border, content lines, and bottom border
+        return (
+                "╭" + "─" * 26 + "╮\n"  # Top border with 26 horizontal lines
+                + "\n".join(lines) + "\n"  # Join each content line with newline
+                + "╰" + "─" * 26 + "╯"  # Bottom border matching the top width
+        )
+
+
+# ─── Utility Functions for Decoration ────────────────────────────────────────
+def print_banner():
+    """Print a stylized banner at the top of the CLI."""
+    print("╔" + "═" * 28 + "╗")  # Top border of the banner
+    print("║   🌐 Social Network CLI   ║")  # Centered title with globe emoji
+    print("╚" + "═" * 28 + "╝\n")  # Bottom border and a blank line
+
+
+def print_menu():
+    """Print the main menu box with numbered options, using box-drawing characters."""
+    print("┌" + "─" * 28 + "┐")  # Top border of the menu box
+    print("│        Main Menu         │")  # Title row centered inside the box
+    print("├" + "─" * 28 + "┤")  # Separator line
+    print("│ 1) List all users        │")  # Option 1
+    print("│ 2) View user profile     │")  # Option 2
+    print("│ 3) View followed accounts│")  # Option 3
+    print("│ 4) View followers        │")  # Option 4
+    print("│ 0) Exit                  │")  # Option 0
+    print("└" + "─" * 28 + "┘")  # Bottom border of the menu box
+
+
+def decorate_list(items, title):
+    """
+    Print a titled list of items with decorative bullets and emojis.
+    - items: iterable of strings to list
+    - title: heading for the list
+    """
+    print(f"\n✨ {title} ✨")  # Print title flanked by sparkles
+    for name in items:  # Iterate through each item
+        print(f"  • {name}")  # Print each with an indented bullet
+    print()  # Blank line after the list
+
+
+# ─── Sample Data & Interactive Menu ──────────────────────────────────────────
+def build_sample_graph():
+    """
+    Construct a sample social graph with five users and follow relationships.
+    Returns:
+      - graph: Graph instance populated with users and edges
+      - people: dict mapping user names to Person instances
+    """
+    # Initialize Person objects for our sample users
+    people = {
+        "Alice": Person("Alice", "F", "Foodie & traveller"),  # Public profile
+        "Bob": Person("Bob", "M", "Gamer & coder", privacy='private'),  # Private profile
+        "Carol": Person("Carol", "F", "Photographer"),  # Public profile
+        "Dave": Person("Dave", "M", "Musician"),  # Public profile
+        "Eve": Person("Eve", "F", "Security researcher")  # Public profile
+    }
+    g = Graph()  # Create a new Graph instance
+    for name in people:  # Add each user name as a vertex
+        g.add_vertex(name)
+    # Define following relationships between users
+    g.add_edge("Alice", "Bob")  # Alice follows Bob
+    g.add_edge("Alice", "Carol")  # Alice follows Carol
+    g.add_edge("Bob", "Eve")  # Bob follows Eve
+    g.add_edge("Dave", "Alice")  # Dave follows Alice
+    g.add_edge("Eve", "Dave")  # Eve follows Dave
+    return g, people  # Return both the graph and the people dict
+
+
+def menu(graph, people):
+    """
+    Display the interactive CLI menu loop.
+    Continues to prompt until the user selects '0' to exit.
+    """
+    print_banner()  # Show the banner once at start
+    while True:  # Start infinite loop for menu
+        print_menu()  # Show menu options
+        choice = input("Select> ").strip()  # Read user input and strip whitespace
+        if choice == '1':
+            # List all registered users in alphabetical order
+            decorate_list(sorted(people.keys()), "Registered Users")
+        elif choice == '2':
+            # Prompt for a user name, then display their profile or an error
+            name = input("Enter name> ").strip()
+            profile = people.get(name)
+            if profile:
+                print(f"\n{profile}\n")  # Print decorated profile box
+            else:
+                print(f"\n⚠️  No user named {name}\n")
+        elif choice == '3':
+            # Prompt for a user name, then list who that user follows
+            name = input("Enter name> ").strip()
+            follows = graph.outgoing(name)
+            decorate_list(follows, f"{name} Follows")
+        elif choice == '4':
+            # Prompt for a user name, then list that user's followers
+            name = input("Enter name> ").strip()
+            followers = graph.followers(name)
+            decorate_list(followers, f"{name}'s Followers")
+        elif choice == '0':
+            # Exit option: bid farewell and break loop
+            print("\n👋 Goodbye!\n")
+            break
+        else:
+            # Handle invalid menu inputs
+            print("\n❌ Invalid option. Please try again.\n")
+
+
+def main():
+    """Program entry point: build data structures and launch the menu."""
+    graph, people = build_sample_graph()  # Prepare the sample graph and user profiles
+    menu(graph, people)  # Enter the interactive loop
+
+
+if __name__ == "__main__":
+    main()  # Execute main() when the script is run directly
